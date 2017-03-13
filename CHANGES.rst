@@ -1,8 +1,8 @@
 CHANGES
 =======
 
-2.0.0 (2016-03-XX)
-------------------
+`2.0.0dev0` (2017-03-14)
+------------------------
 
 - Properly handle payload errors #1710
 
@@ -25,7 +25,15 @@ CHANGES
 - `run_app` and the Command Line Interface now support serving over
   Unix domain sockets for faster inter-process communication.
 
+- `run_app` now supports passing a preexisting socket object. This can be useful
+  e.g. for socket-based activated applications, when binding of a socket is
+  done by the parent process.
+
 - Implementation for Trailer headers parser is broken #1619
+
+- Fix FileResponse to not fall on bad request (range out of file size)
+
+- Fix FileResponse to correct stream video to Chromes
 
 - Deprecate public low-level api #1657
 
@@ -61,7 +69,3 @@ CHANGES
   attributes and `resolve` constructor  parameter #1607
 
 - Dropped `ProxyConnector` #1609
-
-- Fix file_sender to not fall on bad request (range out of file size)
-
-- Fix file_sender to correct stream video to Chromes

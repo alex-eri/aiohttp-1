@@ -396,7 +396,7 @@ def test_format_task_get(test_server, loop):
     assert "{}".format(task)[:18] == "<Task pending coro"
     resp = yield from task
     resp.close()
-    yield from client.close()
+    client.close()
 
 
 @asyncio.coroutine
@@ -1636,11 +1636,59 @@ def test_encoding_gzip(loop, test_client):
 
 
 @asyncio.coroutine
-def test_bad_payload_encoding(loop, test_client):
+def test_bad_payload_compression(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         resp = web.Response(text='text')
         resp.headers['Content-Encoding'] = 'gzip'
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+
+    with pytest.raises(aiohttp.ClientPayloadError):
+        yield from resp.read()
+
+    resp.close()
+
+
+@asyncio.coroutine
+def test_bad_payload_chunked_encoding(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.StreamResponse()
+        resp.force_close()
+        resp._length_check = False
+        resp.headers['Transfer-Encoding'] = 'chunked'
+        writer = yield from resp.prepare(request)
+        writer.write(b'9\r\n\r\n')
+        yield from writer.write_eof()
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+
+    with pytest.raises(aiohttp.ClientPayloadError):
+        yield from resp.read()
+
+    resp.close()
+
+
+@asyncio.coroutine
+def test_bad_payload_content_length(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.Response(text='text')
+        resp.headers['Content-Length'] = '10000'
+        resp.force_close()
         return resp
 
     app = web.Application(loop=loop)
@@ -1792,7 +1840,7 @@ def test_request_conn_error(loop):
     client = aiohttp.ClientSession(loop=loop)
     with pytest.raises(aiohttp.ClientConnectionError):
         yield from client.get('http://0.0.0.0:1')
-    yield from client.close()
+    client.close()
 
 
 @pytest.mark.xfail

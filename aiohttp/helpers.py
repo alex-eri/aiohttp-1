@@ -55,9 +55,15 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 if sys.version_info < (3, 5):
     noop = tuple
 else:
+    coroutines = asyncio.coroutines
+    old_debug = coroutines._DEBUG
+    coroutines._DEBUG = False
+
     @asyncio.coroutine
     def noop(*args, **kwargs):
-        pass
+        return
+
+    coroutines._DEBUG = old_debug
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -687,16 +693,12 @@ class CeilTimeout(Timeout):
 
     def __enter__(self):
         if self._timeout is not None:
-            if self._timeout > 0:
-                self._task = asyncio.Task.current_task(loop=self._loop)
-                if self._task is None:
-                    raise RuntimeError(
-                        'Timeout context manager should be used inside a task')
-                self._cancel_handler = self._loop.call_at(
-                    ceil(self._loop.time() + self._timeout), self._cancel_task)
-            else:
-                self._timeout = None
-
+            self._task = asyncio.Task.current_task(loop=self._loop)
+            if self._task is None:
+                raise RuntimeError(
+                    'Timeout context manager should be used inside a task')
+            self._cancel_handler = self._loop.call_at(
+                ceil(self._loop.time() + self._timeout), self._cancel_task)
         return self
 
 
